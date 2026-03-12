@@ -1,0 +1,4 @@
+.env
+tmprepo/
+*.pyc
+venv/

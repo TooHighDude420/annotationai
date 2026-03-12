@@ -1,0 +1,54 @@
+# Multi-Agent Code Review Pipeline
+# -----------------------------------
+# Setup:
+#   python -m venv venv
+#   source venv/bin/activate        (Linux/Mac)
+#   venv\Scripts\activate           (Windows)
+#   pip install -r requirements.txt
+
+langchain-openai>=0.2.0
+python-dotenv>=1.0.0
+rich>=13.0.0
+annotated-types==0.7.0
+anyio==4.12.1
+asgiref==3.11.1
+certifi==2026.2.25
+charset-normalizer==3.4.4
+Django==6.0.2
+flake8==7.3.0
+flake8-json==24.4.0
+h11==0.16.0
+httpcore==1.0.9
+httpx==0.28.1
+idna==3.11
+jsonpatch==1.33
+jsonpointer==3.0.0
+langchain==1.2.10
+langchain-core==1.2.16
+langchain-ollama==1.0.1
+langgraph==1.0.10
+langgraph-checkpoint==4.0.1
+langgraph-prebuilt==1.0.8
+langgraph-sdk==0.3.9
+langsmith==0.7.9
+mccabe==0.7.0
+ollama==0.6.1
+orjson==3.11.7
+ormsgpack==1.12.2
+packaging==26.0
+pycodestyle==2.14.0
+pydantic==2.12.5
+pydantic_core==2.41.5
+pyflakes==3.4.0
+PyYAML==6.0.3
+requests==2.32.5
+requests-toolbelt==1.0.0
+sqlparse==0.5.5
+tenacity==9.1.4
+typing-inspection==0.4.2
+typing_extensions==4.15.0
+tzdata==2025.3
+urllib3==2.6.3
+uuid_utils==0.14.1
+xxhash==3.6.0
+zstandard==0.25.0
