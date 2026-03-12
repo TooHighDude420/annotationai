@@ -25,7 +25,7 @@ SECRET_KEY = 'django-insecure-pz(+e%a)%6ov&)xiyfpo6ob6q3s*nmpjzd_j$0c@pi_^k)&ayk
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["annotationai-production.up.railway.app"]
 
 
 # Application definition
