@@ -1,0 +1,5 @@
+[build]
+builder = "NIXPACKS"
+
+[deploy]
+startCommand = "cd Django/code_annotation_ai && python manage.py migrate && gunicorn code_annotation_ai.wsgi:application --bind 0.0.0.0:$PORT"
