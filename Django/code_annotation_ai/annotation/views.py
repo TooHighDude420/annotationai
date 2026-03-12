@@ -34,9 +34,9 @@ def predict(request):
         return JsonResponse({"status": "failed", "reason": str(e)})
 
     # Fire and forget — returns task ID instantly
-    task = run_review_task.delay(str(tmprepoloc), str(annosaveloc))
+    task = run_review_task.delay(repo)
     
-    return JsonResponse({"status": "processing", "task_id": task.id, "result_link":f"annotationai-production.up.railway.app/test/result/{task.id}"})
+    return JsonResponse({"status": "processing", "task_id": task.id})
 
 @csrf_exempt
 def get_result(request, task_id):
