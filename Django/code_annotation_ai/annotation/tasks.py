@@ -17,4 +17,4 @@ def run_review_task(self, repo_url):
     Repo.clone_from(repo_url, tmprepoloc)
     annotation = main.run_pipeline(str(tmprepoloc))
     
-    return {"result":json.loads(annotation), "location":tmprepoloc}
+    return {"result":json.loads(annotation), "location":str(tmprepoloc)}
