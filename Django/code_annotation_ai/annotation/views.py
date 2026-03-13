@@ -1,4 +1,4 @@
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from .tasks import run_review_task
@@ -33,10 +33,11 @@ def predict(request):
     except Exception as e:
         return JsonResponse({"status": "failed", "reason": str(e)})
 
-    # Fire and forget — returns task ID instantly
     task = run_review_task.delay(repo)
     
-    return JsonResponse({"status": "processing", "task_id": task.id})
+    return redirect(f"anno:result", task.id)
+    
+    # return JsonResponse({"status": "processing", "task_id": task.id})
 
 @csrf_exempt
 def get_result(request, task_id):
