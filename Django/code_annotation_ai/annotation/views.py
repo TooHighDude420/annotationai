@@ -57,7 +57,7 @@ def get_result(request, task_id):
             raise ValueError("result or location is not set")
         else:
             shutil.rmtree(location)
-            return JsonResponse({"status": "complete", "result": result.get()})
+            return JsonResponse({"status": "complete", "result": res})
     elif result.state == 'FAILURE':
         return JsonResponse({"status": "failed", "reason": str(result.info)})
     else:
