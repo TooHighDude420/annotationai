@@ -7,6 +7,7 @@ from code_annotation_ai.settings import BASE_DIR
 from .utils import main
 from git import Repo
 from pathlib import Path
+import shutil
 
 import ollama
 import json
@@ -21,6 +22,7 @@ def predict(request):
         return render(request, "send.html")
 
     repo = request.POST.get('input')
+    
     if "https" not in repo:
         return JsonResponse({"status": "failed", "reason": "no valid repo entered"})
 
@@ -47,7 +49,15 @@ def get_result(request, task_id):
     if result.state == 'PENDING':
         return JsonResponse({"status": "pending"})
     elif result.state == 'SUCCESS':
-        return JsonResponse({"status": "complete", "result": result.get()})
+        resdict = dict(result.get())
+        res = resdict.get("result", None)
+        location = resdict.get("location", None)
+        
+        if res is None or location is None:
+            raise ValueError("result or location is not set")
+        else:
+            shutil.rmtree(location)
+            return JsonResponse({"status": "complete", "result": result.get()})
     elif result.state == 'FAILURE':
         return JsonResponse({"status": "failed", "reason": str(result.info)})
     else:

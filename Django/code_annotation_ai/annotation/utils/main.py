@@ -229,7 +229,7 @@ def run_agent(name: str, system_prompt: str, user_message: str) -> dict:
 # PIPELINE
 # ─────────────────────────────────────────────
 
-def run_pipeline(path: str, output_file: str = "review_results.json") -> dict:
+def run_pipeline(path: str) -> str:
     console.print(Panel(f"[bold green]Multi-Agent Code Review[/bold green]\n[dim]{path}[/dim]"))
 
     # Load files
@@ -296,12 +296,10 @@ def run_pipeline(path: str, output_file: str = "review_results.json") -> dict:
             if summary:
                 console.print(Panel(Text(summary), title=f"[bold]{key}[/bold]", border_style="dim"))
 
-    # ── Save output ──
-    with open(output_file, "w") as f:
-        json.dump(results, f, indent=2)
-    console.print(f"\n[dim]💾 Full results saved to: {output_file}[/dim]")
+    # ── Return output ──
+    retres = json.dumps(results)
 
-    return results
+    return retres
 
 # ─────────────────────────────────────────────
 # CLI
@@ -312,7 +310,6 @@ if __name__ == "__main__":
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--repo", type=str, help="Path to a directory or repo")
     group.add_argument("--file", type=str, help="Path to a single file")
-    parser.add_argument("--output", type=str, default="review_results.json")
 
     args = parser.parse_args()
-    run_pipeline(args.repo or args.file, args.output)
+    run_pipeline(args.repo or args.file)
