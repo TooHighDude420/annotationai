@@ -29,7 +29,6 @@ from rich.panel import Panel
 from rich.text import Text
 
 load_dotenv()
-console = Console()
 
 # ─────────────────────────────────────────────
 # LLM — Claude via OpenRouter
@@ -149,7 +148,11 @@ Return output **only in JSON**, strictly following this schema:
 Rules:
 - Only return valid JSON. No text outside the JSON.
 - Think across ALL files — cross-file big-picture analysis only.
-- revieuw the code on level for a mbo student year 2 software developent
+- revieuw the code on level based on the following:
+    - junior MBO Software Developer year 1
+    - medior MBO Software Developer year 2
+    - medior MBO Software Developer year 3
+    - senior MBO Software Developer year 4
 - give a estimate based on educational level what a rating of 1 / 10 based on level would be
 """
 
@@ -191,8 +194,6 @@ def format_files(files: dict) -> str:
 # ─────────────────────────────────────────────
 
 def run_agent(name: str, system_prompt: str, user_message: str) -> dict:
-    console.print(f"  [cyan]⟳[/cyan]  Running [bold]{name}[/bold]...")
-
     response = llm.invoke([
         SystemMessage(content=system_prompt),
         HumanMessage(content=user_message)
@@ -212,7 +213,6 @@ def run_agent(name: str, system_prompt: str, user_message: str) -> dict:
     except json.JSONDecodeError:
         # Response was likely truncated by token limit — attempt to salvage it
         # by finding the last complete object in the issues/vulnerabilities array
-        console.print(f"  [yellow]⚠️  {name}: JSON truncated, attempting repair...[/yellow]")
         try:
             # Find the last complete closing brace of an array item
             last_valid = raw.rfind('        }')
@@ -229,16 +229,14 @@ def run_agent(name: str, system_prompt: str, user_message: str) -> dict:
 # PIPELINE
 # ─────────────────────────────────────────────
 
-def run_pipeline(path: str) -> str:
-    console.print(Panel(f"[bold green]Multi-Agent Code Review[/bold green]\n[dim]{path}[/dim]"))
+def run_pipeline(path: str, level:str) -> str:
+    print(Panel(f"Multi-Agent Code Review\n{path}"))
 
     # Load files
     files = load_files(path)
     if not files:
-        console.print("[red]No supported files found.[/red]")
         return {}
 
-    console.print(f"[green]📂 {len(files)} file(s) loaded[/green]\n")
     code_context = format_files(files)  # used by security + context agents
 
     results = {
@@ -247,11 +245,9 @@ def run_pipeline(path: str) -> str:
     }
 
     # ── Agent 1: Code Review — batched per file ──
-    console.print(f"  [cyan]⟳[/cyan]  Running [bold]Code Review Agent[/bold] (1 file at a time)...")
     all_issues = []
     for filepath, content in files.items():
         filename = filepath.split(os.sep)[-1]
-        console.print(f"    [dim]→ reviewing {filename}[/dim]")
         file_context = f"### FILE: {filepath}\n```\n{content}\n```"
         result = run_agent(
             f"Code Review Agent [{filename}]",
@@ -261,7 +257,7 @@ def run_pipeline(path: str) -> str:
         if "issues" in result:
             all_issues.extend(result["issues"])
         elif "error" in result:
-            console.print(f"    [red]⚠️  {filename}: {result['error']}[/red]")
+            print(f"{filename}: {result['error']}")
 
     agent1 = {
         "agent": "code_review",
@@ -282,20 +278,16 @@ def run_pipeline(path: str) -> str:
     agent3 = run_agent(
         "Project Context Agent",
         CONTEXT_PROMPT,
-        f"Code:\n\n{code_context}\n\n---\nCode review findings:\n{json.dumps(agent1, indent=2)}\n\n---\nSecurity findings:\n{json.dumps(agent2, indent=2)}"
+        f"Code:\n\n{code_context}\n\n---\nCode review findings:\n{json.dumps(agent1, indent=2)}\n\n---\nSecurity findings:\n{json.dumps(agent2, indent=2)}\n\n---\nLevel:\n{level}"
     )
     results["agents"]["project_context"] = agent3
 
     # ── Print summaries ──
-    console.print("\n[bold green]✅ Review complete[/bold green]\n")
+    print("\nReview complete\n")
     for key, data in results["agents"].items():
         if "error" in data:
-            console.print(f"[red]⚠️  {key}: {data['error']}[/red]")
-        else:
-            summary = data.get("summary", "")
-            if summary:
-                console.print(Panel(Text(summary), title=f"[bold]{key}[/bold]", border_style="dim"))
-
+            print(f"{key}: {data['error']}")
+            
     # ── Return output ──
     retres = json.dumps(results)
 

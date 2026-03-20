@@ -5,7 +5,7 @@ from pathlib import Path
 import json
 
 @shared_task(bind=True)
-def run_review_task(self, repo_url):
+def run_review_task(self, repo_url, level):
     tmpname = str(repo_url).replace("https://", "")
     tmpname = Path(tmpname).stem
     
@@ -15,6 +15,6 @@ def run_review_task(self, repo_url):
     tmprepoloc = BASE_DIR / "annotation" / "utils" / "tmprepo" / tmpname
     
     Repo.clone_from(repo_url, tmprepoloc)
-    annotation = main.run_pipeline(str(tmprepoloc))
+    annotation = main.run_pipeline(str(tmprepoloc), level)
     
     return {"result":json.loads(annotation), "location":str(tmprepoloc)}

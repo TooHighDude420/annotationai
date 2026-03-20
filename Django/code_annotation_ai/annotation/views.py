@@ -4,17 +4,9 @@ from django.views.decorators.csrf import csrf_exempt
 from .tasks import run_review_task
 from linters.linters.py_linter import *
 from code_annotation_ai.settings import BASE_DIR
-from .utils import main
 from git import Repo
 from pathlib import Path
 import shutil
-
-import ollama
-import json
-import os
-
-# Initialize the Ollama client
-ollama_client = ollama.Client()
 
 @csrf_exempt
 def predict(request):
@@ -22,6 +14,7 @@ def predict(request):
         return render(request, "send.html")
 
     repo = request.POST.get('input')
+    level = request.POST.get('level')
     
     if "https" not in repo:
         return JsonResponse({"status": "failed", "reason": "no valid repo entered"})
@@ -35,12 +28,10 @@ def predict(request):
     except Exception as e:
         return JsonResponse({"status": "failed", "reason": str(e)})
 
-    task = run_review_task.delay(repo)
+    task = run_review_task.delay(repo, level)
     
     return redirect(f"anno:result", task.id)
     
-    # return JsonResponse({"status": "processing", "task_id": task.id})
-
 @csrf_exempt
 def get_result(request, task_id):
     from celery.result import AsyncResult
