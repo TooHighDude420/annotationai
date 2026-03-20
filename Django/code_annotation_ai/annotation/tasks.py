@@ -1,13 +1,14 @@
 from celery import shared_task
 from .utils import main
 from git import Repo
-from pathlib import Path
+import hashlib
 import json
 
 @shared_task(bind=True)
 def run_review_task(self, repo_url, level):
-    tmpname = str(repo_url).replace("https://", "")
-    tmpname = Path(tmpname).stem
+    url_slug = repo_url.replace("https://", "").replace("/", "_").replace(".", "_")
+    unique_suffix = hashlib.md5(repo_url.encode()).hexdigest()[:8]
+    tmpname = f"{url_slug}_{unique_suffix}"
     
     from django.conf import settings
     BASE_DIR = settings.BASE_DIR

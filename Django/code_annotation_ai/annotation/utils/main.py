@@ -24,9 +24,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage
-from rich.console import Console
 from rich.panel import Panel
-from rich.text import Text
 
 load_dotenv()
 
@@ -46,7 +44,18 @@ llm = ChatOpenAI(
 # ─────────────────────────────────────────────
 
 CODE_REVIEW_PROMPT = """
-You are an expert code reviewer specializing in Python syntax, lint errors, and best practices.
+You are a code reviewer and teacher giving feedback to a student at the level specified by the user.
+Tailor the depth, terminology, and expectations strictly to that educational level.
+
+Level guidance:
+- year 1: Focus only on basics — unused imports, naming (snake_case), unnecessary whitespace, obvious logic errors.
+          Do NOT mention type hints, docstrings, module guards, dependency injection, or design patterns.
+          Keep explanations simple, encouraging, and concrete. Max 3-4 issues per file.
+- year 2: Add PEP 8 style consistency, simple refactoring, basic error handling.
+          One brief mention of docstrings is fine. Still no advanced patterns.
+- year 3: Include DRY violations, basic error handling, function responsibilities, simple code structure.
+- year 4: Full professional review — type hints, architecture, testability, docstrings, all best practices.
+
 Return output **only in JSON**, strictly following this schema:
 
 {
@@ -60,19 +69,20 @@ Return output **only in JSON**, strictly following this schema:
             "original_code": "<the code that caused the error>",
             "suggested_fix": "<corrected code>",
             "explanation": [
-                "<explanation 1>",
-                "<explanation 2>",
-                "<explanation 3>"
+                "<main explanation — what is wrong and why, in terms the student can understand>",
+                "<how to fix it or what to do instead>",
+                "<why this matters at their level>"
             ]
         }
     ],
-    "summary": "<overall code quality summary in 2-3 sentences>"
+    "summary": "<overall code quality summary in 2-3 sentences, encouraging in tone for lower levels>"
 }
 
 Rules:
 - Only return valid JSON. No text outside the JSON.
-- At least 3 explanations per issue.
-- Cover: unused imports, naming conventions, type hints, docstrings, complexity.
+- Exactly 3 explanations per issue.
+- Only raise issues that are relevant and teachable at the student's level.
+- Be encouraging — acknowledge what the student did well where possible.
 """
 
 SECURITY_PROMPT = """
@@ -111,9 +121,18 @@ Rules:
 """
 
 CONTEXT_PROMPT = """
-You are a senior software architect who understands entire projects holistically.
+You are a software teacher reviewing a student's project holistically.
 You will receive the code AND findings from both the code review and security agents before you.
-Use all of this to give a complete big-picture assessment.
+The student's educational level is provided — calibrate ALL feedback and ratings to that level.
+
+Level definitions:
+- "year 1": Just started programming. Assess only: does the code run, is it readable, are basics followed?
+             A 7/10 at year 1 means the code works and is reasonably readable. Do NOT penalise for missing
+             docstrings, type hints, tests, logging, or architecture. These are not year 1 topics.
+- "year 2": Some experience. Begins to learn about structure, basic error handling, consistent style.
+- "year 3": Growing professional. Can be expected to know DRY, basic patterns, error handling, some testing.
+- "year 4": Near-professional. Full best practices apply.
+
 Return output **only in JSON**, strictly following this schema:
 
 {
@@ -128,32 +147,33 @@ Return output **only in JSON**, strictly following this schema:
     "architectural_issues": [
         {
             "file": "<file>",
-            "issue": "<architectural concern>",
+            "issue": "<concern — only include if relevant at the student's level>",
             "severity": "<critical | high | medium | low>",
-            "recommendation": "<what to do instead>"
+            "recommendation": "<concrete, actionable advice in terms the student can understand>"
         }
     ],
     "consistency_issues": [
         {
-            "description": "<inconsistency across files>",
+            "description": "<inconsistency across files — only relevant ones for the level>",
             "files_affected": ["<file1>", "<file2>"],
-            "recommendation": "<how to make consistent>"
+            "recommendation": "<how to make consistent, explained simply>"
         }
     ],
-    "missing_components": ["<tests | docs | error handling | logging | etc>"],
-    "strengths": ["<things done well>"],
-    "summary": "<holistic project assessment in 3-4 sentences>"
+    "missing_components": ["<only list things that are expected at this educational level>"],
+    "strengths": ["<specific things the student did well — be concrete and generous>"],
+    "summary": "<holistic assessment in 3-4 sentences. Encouraging tone. Mention what works before what to improve.>",
+    "educational_level_assessment": {
+        "level": "<the level provided>",
+        "rating": "<X/10 — calibrated to what is expected at this level, not professional standards>",
+        "justification": "<explain the rating relative to peers at the same level, not professional developers>"
+    }
 }
 
 Rules:
 - Only return valid JSON. No text outside the JSON.
-- Think across ALL files — cross-file big-picture analysis only.
-- revieuw the code on level based on the following:
-    - junior MBO Software Developer year 1
-    - medior MBO Software Developer year 2
-    - medior MBO Software Developer year 3
-    - senior MBO Software Developer year 4
-- give a estimate based on educational level what a rating of 1 / 10 based on level would be
+- Think across ALL files — cross-file analysis only.
+- NEVER penalise a year 1 or year 2 student for missing type hints, docstrings, unit tests, logging, or architectural patterns.
+- The rating must reflect the student's level. A working year 1 project with reasonable code is a 6-7, not a 3.
 """
 
 # ─────────────────────────────────────────────
@@ -229,13 +249,13 @@ def run_agent(name: str, system_prompt: str, user_message: str) -> dict:
 # PIPELINE
 # ─────────────────────────────────────────────
 
-def run_pipeline(path: str, level:str) -> str:
+def run_pipeline(path: str, level: str) -> str:
     print(Panel(f"Multi-Agent Code Review\n{path}"))
 
     # Load files
     files = load_files(path)
     if not files:
-        return {}
+        return json.dumps({})
 
     code_context = format_files(files)  # used by security + context agents
 
@@ -244,7 +264,7 @@ def run_pipeline(path: str, level:str) -> str:
         "agents": {}
     }
 
-    # ── Agent 1: Code Review — batched per file ──
+    # ── Agent 1: Code Review — per file, level-aware ──
     all_issues = []
     for filepath, content in files.items():
         filename = filepath.split(os.sep)[-1]
@@ -252,7 +272,7 @@ def run_pipeline(path: str, level:str) -> str:
         result = run_agent(
             f"Code Review Agent [{filename}]",
             CODE_REVIEW_PROMPT,
-            f"Review this file:\n\n{file_context}"
+            f"Student level: {level}\n\nReview this file:\n\n{file_context}"
         )
         if "issues" in result:
             all_issues.extend(result["issues"])
@@ -302,6 +322,13 @@ if __name__ == "__main__":
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--repo", type=str, help="Path to a directory or repo")
     group.add_argument("--file", type=str, help="Path to a single file")
+    parser.add_argument(
+        "--level",
+        type=str,
+        choices=["year 1", "year 2", "year 3", "year 4"],
+        default="year 1",
+        help="Educational level of the student being reviewed (default: year 1)"
+    )
 
     args = parser.parse_args()
-    run_pipeline(args.repo or args.file)
+    run_pipeline(args.repo or args.file, args.level)
