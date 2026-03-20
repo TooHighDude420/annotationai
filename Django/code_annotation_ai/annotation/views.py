@@ -6,7 +6,6 @@ from linters.linters.py_linter import *
 from code_annotation_ai.settings import BASE_DIR
 from git import Repo
 from pathlib import Path
-import shutil
 
 @csrf_exempt
 def predict(request):
@@ -42,13 +41,8 @@ def get_result(request, task_id):
     elif result.state == 'SUCCESS':
         resdict = dict(result.get())
         res = resdict.get("result", None)
-        location = resdict.get("location", None)
         
-        if res is None or location is None:
-            raise ValueError("result or location is not set")
-        else:
-            shutil.rmtree(location)
-            return JsonResponse({"status": "complete", "result": res})
+        return JsonResponse({"status": "complete", "result": res})
     elif result.state == 'FAILURE':
         return JsonResponse({"status": "failed", "reason": str(result.info)})
     else:
