@@ -7,7 +7,12 @@
 <body>
     <form action="{% url "anno:predict" %}" method="post">
         <input type="text" name="input">
-        <input type="text" name="level">
+        <select name="level" id="">
+            <option value="year 1" selected>Year 1</option>
+            <option value="year 2">Year 2</option>
+            <option value="year 3">Year 3</option>
+            <option value="year 4">Year 4</option>
+        </select>
         <Button type="submit">test</Button>
     </form>
 </body>
